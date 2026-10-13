@@ -25,6 +25,7 @@ from services.rate_limiter import (
 )
 from services import reports, token_optimization, token_usage
 from services.actions import action_breakdown, action_distribution
+from services.agent_limits import assert_agent_slot
 from services import token_optimization_config
 from services.ai import config as ai_config
 from services.ai.provider import AIProviderError
@@ -206,6 +207,7 @@ async def create_agent(
             if existing:
                 raise conflict("Agent already exists")
 
+            await assert_agent_slot(conn, tenant_id=tenant_id, agent_id=agent_id)
             await assert_and_reserve_api_key_slot(conn, tenant_id=tenant_id)
 
             await conn.execute(
