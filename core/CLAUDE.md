@@ -35,6 +35,8 @@ Swagger UI: `http://localhost:8000/swagger` · OpenAPI schema: `/openapi.json`
 
 ### A2A (`POST /v1/a2a/messages`)
 
+**Managed cloud only**: on `DEPLOYMENT_MODE=self_hosted` the route returns 403 (self-hosted is single-agent, see `services/agent_limits.py`).
+
 SDK-only. Auth is `get_tenant`, but a **tenant-wide key or JWT without `agent_id` is 403** — the sender is never a request field.
 
 | Rule | Result |

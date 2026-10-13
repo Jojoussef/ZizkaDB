@@ -112,7 +112,7 @@ cd dashboard && npm run lint && npm test && npm run build
 
 **Schema migrations** — Fresh install: `core/db/schema.sql` (run by Docker on first boot). Running install: `ALTER TABLE IF EXISTS` in `core/db/connection.py::init_db()` (runs on every startup). Always write idempotent DDL.
 
-**Entitlements** — `PLAN_ENTITLEMENTS` dict in `core/services/entitlements.py` is the single source of truth for per-plan API key caps. Override per-plan at runtime with `API_KEY_LIMIT_<PLAN>=N` env var. Never hardcode plan limits anywhere else.
+**Entitlements** — `PLAN_ENTITLEMENTS` dict in `core/services/entitlements.py` is the single source of truth for per-plan caps (API keys and agents). **Self-hosted is one agent with one API key**, always enforced (`limits_enforced()` is true whenever `DEPLOYMENT_MODE=self_hosted`) and not overridable by env. The agent cap is applied in `core/services/agent_limits.py` on every path that can create an agent (dashboard create, first event for a new agent name, key binding); existing agents are never blocked. Multi-agent features (fleets, A2A) are ZizkaDB Cloud only — never add multi-agent capability to self-hosted. Managed plans can be tuned with `API_KEY_LIMIT_<PLAN>` / `MAX_AGENTS_<PLAN>`. Never hardcode plan limits anywhere else.
 
 ---
 

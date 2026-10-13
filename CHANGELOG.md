@@ -6,6 +6,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Self-hosted is one agent, one API key
+
+- **Breaking for multi-agent self-hosts.** A self-hosted deployment (`DEPLOYMENT_MODE=self_hosted`) now runs a single agent with a single active API key. This is always enforced and cannot be changed by env vars (`API_KEY_LIMITS_ENFORCED`, `API_KEY_LIMIT_SELF_HOSTED` and `MAX_AGENTS_SELF_HOSTED` have no effect on self-hosted).
+- Logging an event under a second agent name, creating a second agent in the dashboard, or binding a key to a second agent returns `409` with `code: agent_limit_reached` and a message naming the existing agent.
+- Agents that already exist keep working after upgrading; only new ones are refused. The `support-bot` demo agent and the dashboard connection test do not count toward the limit.
+- `POST /v1/a2a/messages` returns 403 on self-hosted. Multiple agents, agent fleets and agent-to-agent messaging are ZizkaDB Cloud features.
+- Managed deployments: new per-plan agent caps (`max_agents`, tunable with `MAX_AGENTS_<PLAN>`), enforced only when `API_KEY_LIMITS_ENFORCED=true`, as before.
+
 ### Which tool, which API
 
 - Events that name their tool (`data.tool`) or API (`data.api`, or `method` + `url` on `api_call`) are now shown and counted by name. Existing events are covered: the name is read from the payload, with no schema change.
