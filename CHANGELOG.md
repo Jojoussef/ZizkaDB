@@ -6,6 +6,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Which tool, which API
+
+- Events that name their tool (`data.tool`) or API (`data.api`, or `method` + `url` on `api_call`) are now shown and counted by name. Existing events are covered: the name is read from the payload, with no schema change.
+- Dashboard: activity list, session timeline and the Why? chain show `tool_call · lookup_order`; Reports and Agent Behavior get a "Tools & APIs called" table with calls, share and error rate per tool/API.
+- API (additive): `actions` on `GET /v1/agents/{id}/report` and `/behavior-change`; `actions` + `action_distribution` on each `/baseline` window; `top_actions` on `/stats`. `biggest_changes` can now include `actions.tool:<name>` / `actions.api:<name>` entries. Drift scores are computed exactly as before.
+- SDKs: `log_tool` / `log_tool_result` / `log_api` (Python) and `logTool` / `logToolResult` / `logApi` (TypeScript). `log_api` strips the query string, fragment and credentials from the URL before logging.
+- LangChain: `tool_end` and `tool_error` now carry the tool name. CrewAI logger: new `log_tool` / `log_tool_result`.
+- MCP proxy: tool results were never logged (the match could not succeed); results and errors are now matched to their call by JSON-RPC id and logged with the tool name as `mcp_tool_result` / `mcp_tool_error`.
+
 ### Self-hosted dashboard is just the dashboard
 
 - Self-hosted builds (`NEXT_PUBLIC_DEPLOYMENT_MODE=self_hosted`, the default for the GHCR image) no longer serve the marketing site, signup, pricing, OTP login or billing UI. `http://localhost:3001/` goes straight to **Open my dashboard**.

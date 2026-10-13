@@ -562,10 +562,10 @@ Router prefixes are mounted in `core/main.py:66-79`.
 | `getAgentApiKeys` | GET `/v1/agents/{id}/api-keys` | `agents.py:180` |
 | `createAgentApiKey` | POST `/v1/agents/{id}/api-keys` | `agents.py:199` |
 | `revokeAgentApiKey` | DELETE `/v1/agents/{id}/api-keys/{keyId}` | `agents.py:224` |
-| `getAgentStats` | GET `/v1/agents/{id}/stats` | `agents.py:239` |
+| `getAgentStats` | GET `/v1/agents/{id}/stats` (incl. `top_actions`: per-tool/API calls + error rate, `services/actions.py`) | `agents.py:239` |
 | `getAgentSessions` | GET `/v1/agents/{id}/sessions` | `agents.py:280` |
-| `getAgentBaseline` | GET `/v1/agents/{id}/baseline` | `agents.py:453` |
-| `getAgentReport` | GET `/v1/agents/{id}/report?from=&to=&granularity=` | `agents.py` → `services/reports.py` |
+| `getAgentBaseline` | GET `/v1/agents/{id}/baseline` (each window has `actions` + `action_distribution`) | `agents.py:453` |
+| `getAgentReport` | GET `/v1/agents/{id}/report?from=&to=&granularity=` (incl. `actions`, rendered by `components/dashboard/ActionsTable.tsx`) | `agents.py` → `services/reports.py` |
 | `getAgentTokenUsage` | GET `/v1/agents/{id}/token-usage?from=&to=&granularity=` | `agents.py` → `services/token_usage.py` + `services/pricing.py` |
 | `getAgentTokenOptimization` | GET `/v1/agents/{id}/token-optimization?from=&to=&granularity=` | `agents.py` → `services/token_optimization.py` |
 | `getAgentSuggestions` | GET `/v1/agents/{id}/suggestions?from=&to=&refresh=` | `agents.py` → `services/suggestions/` + `services/ai/` |
