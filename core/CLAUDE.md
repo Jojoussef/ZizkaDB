@@ -121,6 +121,7 @@ Never use SQLAlchemy, never open a direct `asyncpg.connect()` — always use the
 | `services/token_optimization_config.py` | Tunable thresholds for the deterministic Token Optimization detectors |
 | `services/token_optimization_models.py` | `TokenOptimizationSuggestion`/`Aggregates`/`Result` dataclasses (unrelated to `services/suggestions/`'s types) |
 | `services/token_optimization.py` | 5 deterministic (no-LLM) detectors + orchestrator — see ADR-007 |
+| `services/actions.py` | Which tool / API an event names (`data.tool`, `data.api`) + per-action call counts and error rates; the only place those payload keys are read in SQL |
 
 ---
 

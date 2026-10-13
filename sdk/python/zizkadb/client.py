@@ -99,6 +99,24 @@ def _emit_log_hint(base_url: str, event_id: str) -> None:
         print(f"  → zizkadb why {event_id}", file=sys.stderr)
 
 
+def _sanitize_url(url: str) -> tuple[str, str]:
+    """Return ``(url, host+path)`` without query string, fragment or credentials."""
+    from urllib.parse import urlsplit, urlunsplit
+
+    parts = urlsplit(url)
+    if not parts.scheme or not parts.hostname:
+        bare = url.split("?", 1)[0].split("#", 1)[0]
+        return bare, bare
+    host = parts.hostname
+    try:
+        port = parts.port
+    except ValueError:
+        port = None
+    if port:
+        host = f"{host}:{port}"
+    return urlunsplit((parts.scheme, host, parts.path, "", "")), f"{host}{parts.path}"
+
+
 class ZizkaDB:
     """
     ZizkaDB client.
@@ -217,6 +235,108 @@ class ZizkaDB:
         record_log_result(agent, result)
         _emit_log_hint(self._base_url, result.event_id)
         return result
+
+    async def log_tool(
+        self,
+        agent: str,
+        tool: str,
+        *,
+        args: Any = None,
+        parent_id: str | None = None,
+        session_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> LogResult:
+        """
+        Log a tool call by name, so the dashboard and reports show *which*
+        tool ran (``tool_call · lookup_order``), not just that one did.
+
+        Example:
+            call = await db.log_tool("support-bot", "lookup_order", args={"order_id": "ORD-8842"})
+            await db.log_tool_result("support-bot", "lookup_order", result=order, parent_id=call.event_id)
+        """
+        data: dict[str, Any] = {"tool": tool}
+        if args is not None:
+            data["args"] = args
+        return await self.log(
+            agent=agent, event="tool_call", data=data,
+            parent_id=parent_id, session_id=session_id, metadata=metadata,
+        )
+
+    async def log_tool_result(
+        self,
+        agent: str,
+        tool: str,
+        *,
+        result: Any = None,
+        error: str | BaseException | None = None,
+        duration_ms: float | None = None,
+        parent_id: str | None = None,
+        session_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> LogResult:
+        """
+        Log how a tool call ended. Pass ``error`` for a failure: the event is
+        logged as ``tool_error`` and counts toward that tool's error rate.
+        """
+        data: dict[str, Any] = {"tool": tool}
+        if error is not None:
+            data["error"] = str(error)
+            if isinstance(error, BaseException):
+                data["type"] = type(error).__name__
+        elif result is not None:
+            data["result"] = result
+        if duration_ms is not None:
+            data["duration_ms"] = duration_ms
+        return await self.log(
+            agent=agent, event="tool_error" if error is not None else "tool_result", data=data,
+            parent_id=parent_id, session_id=session_id, metadata=metadata,
+        )
+
+    async def log_api(
+        self,
+        agent: str,
+        method: str,
+        url: str,
+        *,
+        status: int | None = None,
+        name: str | None = None,
+        duration_ms: float | None = None,
+        error: str | BaseException | None = None,
+        parent_id: str | None = None,
+        session_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> LogResult:
+        """
+        Log an outbound API call, named so reports show *which* API was hit.
+
+        The query string, fragment and any credentials in ``url`` are dropped
+        before logging (they often carry tokens). The call is named ``name``
+        if given, else ``"GET api.stripe.com/v1/charges"``. A 4xx/5xx
+        ``status`` or an ``error`` counts toward that API's error rate.
+
+        Example:
+            await db.log_api("billing-bot", "POST", "https://api.stripe.com/v1/refunds",
+                             status=200, duration_ms=312)
+        """
+        verb = method.upper()
+        clean_url, target = _sanitize_url(url)
+        data: dict[str, Any] = {
+            "api": name or f"{verb} {target}",
+            "method": verb,
+            "url": clean_url,
+        }
+        if status is not None:
+            data["status"] = status
+        if duration_ms is not None:
+            data["duration_ms"] = duration_ms
+        if error is not None:
+            data["error"] = str(error)
+            if isinstance(error, BaseException):
+                data["type"] = type(error).__name__
+        return await self.log(
+            agent=agent, event="api_call", data=data,
+            parent_id=parent_id, session_id=session_id, metadata=metadata,
+        )
 
     def track(self, agent: str, session_id: str | None = None) -> LineageContext:
         """Auto-wire parent_id for logs inside this context."""

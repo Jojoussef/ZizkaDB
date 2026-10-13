@@ -24,6 +24,7 @@ from services.rate_limiter import (
     check_rate_fail_open,
 )
 from services import reports, token_optimization, token_usage
+from services.actions import action_breakdown, action_distribution
 from services import token_optimization_config
 from services.ai import config as ai_config
 from services.ai.provider import AIProviderError
@@ -433,6 +434,7 @@ async def agent_stats(agent_id: str, tenant: dict = Depends(get_tenant)):
         "first_event": stats["first_event"].isoformat() if stats["first_event"] else None,
         "last_event": stats["last_event"].isoformat() if stats["last_event"] else None,
         "top_events": [{"event": r["event_type"], "count": r["count"]} for r in top_events],
+        "top_actions": await action_breakdown(pool, tenant["tenant_id"], agent_id, limit=10),
     }
 
 
@@ -716,6 +718,8 @@ async def _baseline_for(
             "avg_events_per_session": 0,
             "avg_session_seconds":    0,
             "error_rate_pct":         0,
+            "actions":                [],
+            "action_distribution":    {},
         }
 
     type_rows = await pool.fetch(
@@ -776,6 +780,8 @@ async def _baseline_for(
         tenant_id, agent_id, session_ids,
     )
 
+    actions = await action_breakdown(pool, tenant_id, agent_id, session_ids=session_ids)
+
     total_events = sum(r["count"] for r in type_rows)
     return {
         "sessions":               len(session_ids),
@@ -785,6 +791,8 @@ async def _baseline_for(
         "avg_events_per_session": round(session_stats["avg_events"] or 0, 2),
         "avg_session_seconds":    round(session_stats["avg_dur"] or 0, 1),
         "error_rate_pct":         round(error_rate["pct"] or 0, 2),
+        "actions":                actions,
+        "action_distribution":    action_distribution(actions),
     }
 
 
@@ -858,6 +866,8 @@ async def agent_baseline(
     biggest_changes = (
         _biggest_changes("event_distribution", baseline["event_distribution"], recent["event_distribution"])
         + _biggest_changes("transitions",      baseline["transitions"],         recent["transitions"])
+        # Which tool / API moved. Reported only: the drift score is unchanged.
+        + _biggest_changes("actions",          baseline["action_distribution"], recent["action_distribution"])
     )
     biggest_changes.sort(key=lambda d: abs(d["delta_pp"]), reverse=True)
 
@@ -963,12 +973,16 @@ async def _baseline_for_timewindow(
         *params_base,
     )
 
+    actions = await action_breakdown(pool, tenant_id, agent_id, from_ts=from_ts, to_ts=to_ts)
+
     total_events = sum(r["count"] for r in type_rows)
     return {
         "events":             total_events,
         "event_distribution": _distribution(type_rows, "key"),
         "transitions":        _distribution(transition_rows, "key"),
         "error_rate_pct":     round(error_row["pct"] or 0, 2),
+        "actions":            actions,
+        "action_distribution": action_distribution(actions),
     }
 
 
@@ -1085,6 +1099,8 @@ async def agent_behavior_change(
     biggest = (
         _biggest_changes("event_distribution", baseline_w["event_distribution"], current_w["event_distribution"])
         + _biggest_changes("transitions",       baseline_w["transitions"],        current_w["transitions"])
+        # Which tool / API moved. Reported only: the score above is unchanged.
+        + _biggest_changes("actions",           baseline_w["action_distribution"], current_w["action_distribution"])
     )
     biggest.sort(key=lambda d: abs(d["delta_pp"]), reverse=True)
 
@@ -1111,4 +1127,5 @@ async def agent_behavior_change(
             "event_count": current_w["events"],
         },
         "biggest_changes": biggest[:8],
+        "actions":         current_w["actions"],
     }
