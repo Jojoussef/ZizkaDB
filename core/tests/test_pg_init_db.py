@@ -78,3 +78,26 @@ async def test_restart_keeps_existing_rows(pg_db):
         "SELECT name FROM tenants WHERE tenant_id = $1", tenant_id
     )
     assert name == "acme"
+
+
+async def test_empty_qdrant_url_skips_qdrant_when_embeddings_off(pg_db, monkeypatch):
+    """The single-container quickstart ships no Qdrant: QDRANT_URL="" must boot."""
+    await connection.close_db()
+    monkeypatch.setattr(connection, "_qdrant", None)
+    monkeypatch.setenv("QDRANT_URL", "")
+
+    await connection.init_db()
+
+    assert await connection.get_pool().fetchval("SELECT 1") == 1
+    assert (await connection.check_qdrant())["ok"] is False
+    with pytest.raises(RuntimeError, match="Qdrant not initialized"):
+        connection.get_qdrant()
+
+
+async def test_empty_qdrant_url_refused_when_embeddings_on(pg_db, monkeypatch):
+    await connection.close_db()
+    monkeypatch.setenv("QDRANT_URL", "")
+    monkeypatch.setenv("EMBEDDINGS_ENABLED", "true")
+
+    with pytest.raises(RuntimeError, match="QDRANT_URL is empty"):
+        await connection.init_db()
