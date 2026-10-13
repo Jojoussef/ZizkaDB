@@ -15,6 +15,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - LangChain: `tool_end` and `tool_error` now carry the tool name. CrewAI logger: new `log_tool` / `log_tool_result`.
 - MCP proxy: tool results were never logged (the match could not succeed); results and errors are now matched to their call by JSON-RPC id and logged with the tool name as `mcp_tool_result` / `mcp_tool_error`.
 
+### One-container quickstart
+
+- New single image `ghcr.io/zizka-ai-sl/zizkadb` (`infra/allinone/`): Postgres 16 + pgvector, Redis, the API and the dashboard in one container, with all data in one volume. `quickstart-remote.sh` now pulls and runs it instead of five containers, and falls back to the compose stack if the image is unavailable (`ZIZKADB_QUICKSTART=compose` forces the old path).
+- The quickstart no longer needs Python on the host: the container logs the demo chain itself on first start. The script checks for busy ports first, publishes on `127.0.0.1` only, and opens the dashboard on the demo agent.
+- Self-hosted dashboard in one-click mode (`ENV=development`) now signs in automatically, and a deep link such as `/dashboard/activity?agent=support-bot` survives the login redirect. Admin-token mode is unchanged.
+- `QDRANT_URL=""` starts the API without Qdrant when embeddings are off (the self-host default). With embeddings on, an empty `QDRANT_URL` is a startup error.
+- GHCR images are now built for `linux/arm64` as well as `linux/amd64`, so Apple Silicon runs them natively. The API image no longer ships compilers.
+
 ### Self-hosted dashboard is just the dashboard
 
 - Self-hosted builds (`NEXT_PUBLIC_DEPLOYMENT_MODE=self_hosted`, the default for the GHCR image) no longer serve the marketing site, signup, pricing, OTP login or billing UI. `http://localhost:3001/` goes straight to **Open my dashboard**.
