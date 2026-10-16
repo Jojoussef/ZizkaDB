@@ -9,7 +9,7 @@ replacement for LLM-provided memory:
 
 from fastapi import APIRouter, Depends
 from services.exceptions import bad_request, not_found, service_unavailable
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Any
 import asyncio
 import hashlib
@@ -32,10 +32,13 @@ log = logging.getLogger(__name__)
 class ContextRequest(BaseModel):
     agent: str
     task: str
-    max_tokens: int = 2000
+    # Bounds mirror SearchRequest / the list routes: a negative recent_limit
+    # reached Postgres as LIMIT $4 and errored (500), and unbounded limits
+    # allowed an arbitrarily large events / vector fetch.
+    max_tokens: int = Field(default=2000, ge=1)
     session_id: str | None = None   # exclude current session from context
-    recent_limit: int = 10          # how many recent events to always include
-    semantic_limit: int = 10        # how many semantically relevant events
+    recent_limit: int = Field(default=10, ge=1, le=100)   # recent events to always include
+    semantic_limit: int = Field(default=10, ge=1, le=100) # semantically relevant events
 
 
 class ForgetRequest(BaseModel):
